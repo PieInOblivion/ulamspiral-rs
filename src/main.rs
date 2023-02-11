@@ -16,29 +16,28 @@ fn main() {
         },
     )
     .unwrap_or_else(|e| panic!("{e}"));
+
     window.limit_update_rate(Some(std::time::Duration::from_millis(8)));
 
     let mut primesvec: BitVec<u8> = bitvec![u8, Lsb0; 1; WIDTH*HEIGHT];
 
-    let mut lastw: usize = 0;
-    let mut lasth: usize = 0;
+    let mut lastsize: (usize, usize) = (0, 0);
     let mut windowbuf: Vec<u32> = vec_to_spiral_layout(&primesvec, WIDTH, HEIGHT);
 
     while window.is_open() && !window.is_key_down(Key::Escape) {
         let size = window.get_size();
 
-        if lastw != size.0 || lasth != size.1 {
-            lastw = size.0;
-            lasth = size.1;
+        if lastsize.0 != size.0 || lastsize.1 != size.1 {
+            lastsize = size;
 
-            let neededprimes = required_to_gen(size.0, size.1);
+            let largestsidesqrd = cmp::max(size.1, size.0).pow(2);
 
-            if neededprimes > primesvec.len() {
-                primesvec = sieve_gen(neededprimes);
+            if largestsidesqrd > primesvec.len() {
+                primesvec = sieve_gen(largestsidesqrd);
             }
-
             windowbuf = vec_to_spiral_layout(&primesvec, size.0, size.1);
         }
+
         window
             .update_with_buffer(&windowbuf, size.0, size.1)
             .unwrap();
@@ -51,19 +50,17 @@ fn sieve_gen(max: usize) -> BitVec<u8> {
     prime_buffer.set(0, false);
     prime_buffer.set(1, false);
 
-    for p in 2..max {
-        let mut multi = p * p;
-        while multi < max {
-            prime_buffer.set(multi, false);
-            multi += p;
+    for p in 2..max / 2 + 1 {
+        if prime_buffer[p] {
+            let mut multi = p * p;
+            while multi < max {
+                prime_buffer.set(multi, false);
+                multi += p;
+            }
         }
     }
 
     return prime_buffer;
-}
-
-fn required_to_gen(w: usize, h: usize) -> usize {
-    return if w >= h { w * w } else { h * h };
 }
 
 fn x_y_to_vec_index(x: usize, y: usize, w: usize) -> usize {
